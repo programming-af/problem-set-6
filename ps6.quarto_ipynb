@@ -1,0 +1,410 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "---\n",
+        "title: \"Problem Set 6 - Waze Shiny Dashboard\"\n",
+        "author: \"Peter Ganong, Maggie Shi, and Andre Oviedo\"\n",
+        "date: Nov 13\n",
+        "format: \n",
+        "  pdf:\n",
+        "    include-in-header: \n",
+        "       text: |\n",
+        "         \\usepackage{fvextra}\n",
+        "         \\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\\\\{\\}}\n",
+        "include-before-body:\n",
+        "  text: |\n",
+        "    \\RecustomVerbatimEnvironment{verbatim}{Verbatim}{\n",
+        "      showspaces = false,\n",
+        "      showtabs = false,\n",
+        "      breaksymbolleft={},\n",
+        "      breaklines\n",
+        "    }\n",
+        "---\n",
+        "\n",
+        "1. **ps6:** Due Sat 23rd at 5:00PM Central. Worth 100 points (80 points from questions, 10 points for correct submission and 10 points for code style) + 10 extra credit. \n",
+        "\n",
+        "We use (`*`) to indicate a problem that we think might be time consuming. \n",
+        "\n",
+        "# Steps to submit (10 points on PS6) {-}\n",
+        "\n",
+        "1. \"This submission is my work alone and complies with the 30538 integrity\n",
+        "policy.\" Add your initials to indicate your agreement: AF\n",
+        "2. \"I have uploaded the names of anyone I worked with on the problem set **[here](https://docs.google.com/forms/d/185usrCREQaUbvAXpWhChkjghdGgmAZXA3lPWpXLLsts/edit)**\"  AF (2 point)\n",
+        "3. Late coins used this pset: 0 Late coins left after submission: 3\n",
+        "\n",
+        "4. Before starting the problem set, make sure to read and agree to the terms of data usage for the Waze data [here](https://canvas.uchicago.edu/courses/59054/quizzes/130617).\n",
+        "\n",
+        "5. Knit your `ps6.qmd` as a pdf document and name it `ps6.pdf`.\n",
+        "6. Submit your `ps6.qmd`, `ps6.pdf`, `requirements.txt`, and all created folders (we will create three Shiny apps so you will have at least three additional folders) to the gradescope repo assignment (5 points).\n",
+        "7. Submit `ps6.pdf` and also link your Github repo via Gradescope (5 points)\n",
+        "8. Tag your submission in Gradescope. For the Code Style part (10 points) please tag the whole correspondingsection for the code style rubric.\n",
+        "\n",
+        "*Notes: see the [Quarto documentation (link)](https://quarto.org/docs/authoring/figures.html) for directions on inserting images into your knitted document.*\n",
+        "\n",
+        "*IMPORTANT: For the App portion of the PS, in case you can not arrive to the expected functional dashboard we will need to take a look at your `app.py` file. You can use the following code chunk template to \"import\" and print the content of that file. Please, don't forget to also tag the corresponding code chunk as part of your submission!*\n"
+      ],
+      "id": "86433f04"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| echo: false\n",
+        "#| eval: false\n",
+        "\n",
+        "def print_file_contents(file_path):\n",
+        "    \"\"\"Print contents of a file.\"\"\"\n",
+        "    try:\n",
+        "        with open(file_path, 'r') as f:\n",
+        "            content = f.read()\n",
+        "            print(\"```python\")\n",
+        "            print(content)\n",
+        "            print(\"```\")\n",
+        "    except FileNotFoundError:\n",
+        "        print(\"```python\")\n",
+        "        print(f\"Error: File '{file_path}' not found\")\n",
+        "        print(\"```\")\n",
+        "    except Exception as e:\n",
+        "        print(\"```python\") \n",
+        "        print(f\"Error reading file: {e}\")\n",
+        "        print(\"```\")\n",
+        "\n",
+        "print_file_contents(\"./top_alerts_map_byhour/app.py\") # Change accordingly"
+      ],
+      "id": "8b46e118",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "### SETUP \n",
+        "import pandas as pd\n",
+        "import altair as alt\n",
+        "import time\n",
+        "import os\n",
+        "import warnings\n",
+        "import geopandas as gpd\n",
+        "import json\n",
+        "import numpy as np\n",
+        "import matplotlib.pyplot as plt\n",
+        "import requests\n",
+        "import concurrent.futures\n",
+        "\n",
+        "from bs4 import BeautifulSoup\n",
+        "from datetime import date\n",
+        "\n",
+        "alt.data_transformers.disable_max_rows() \n",
+        "warnings.filterwarnings('ignore')"
+      ],
+      "id": "a8b08cb3",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# Background {-}\n",
+        "\n",
+        "## Data Download and Exploration (20 points){-} \n",
+        "\n",
+        "#### 1. Using the zipfile package, unzip the waze_data.zip file. You will find two files in the unzipped folder: waze_data.csv (the whole dataset) and waze_data_sample.csv (a sample of 1% of the data). Load the waze_data_sample.csv file into a pandas DataFrame. What are the variable names and what are their data types? When reporting data types, report using the Altair syntax (e.g., Quantitative, Nominal, etc.). When reporting data types, ignore the columns ts, geo, and geoWKT.\n"
+      ],
+      "id": "f6bead27"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "os.chdir('d:\\\\UChicago\\\\Classes\\\\2024Qfall\\\\Programming Python\\\\problem-set-6\\\\Data')\n",
+        "df = pd.read_csv('waze_data.csv')\n",
+        "\n",
+        "print(df.dtypes)"
+      ],
+      "id": "8a76a21c",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "For the Altair Datatypes of each of the respective columns:\n",
+        "city             N;\n",
+        "confidence       O;\n",
+        "nThumbsUp        Q;\n",
+        "street           N;\n",
+        "uuid             N;\n",
+        "country          N;\n",
+        "type             N;\n",
+        "subtype          N;\n",
+        "roadType         N;\n",
+        "reliability      O;\n",
+        "magvar           N;\n",
+        "reportRating     O;\n",
+        "\n",
+        "\n",
+        "#### 2.Now load the waze_data.csv file into a pandas DataFrame. With this file, Create a stacked bar chart where the x-axis is each variable and the stacked bar has two categories: the number of observations where that variable is NULL or missing, and the number of observations where they are not. Which variables have the NULL values? Which variable has the highest share of observations that are missing? \n"
+      ],
+      "id": "e9ebc09f"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "#### 3.Take a look at the variables type and subtype. Even though they informative, some are not aesthetically pleasing, and others are difficult to read. Before going into the development of our Shiny Apps, we will create a crosswalk table to help us have cleaner data. \n",
+        "#### 3. (MORE INSTRUCTIONS IN PDF DOCUMENT)\n"
+      ],
+      "id": "6f25aa91"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "#### 4.We want to assign this newly created hierarchy to the original data. To do so, we will create the crosswalk DataFrame and then merge it with the rest of the data. \n",
+        "\n",
+        "a. To create a crosswalk, define a pandas DataFrame which has five columns: type and subtype from the original dataset, and three new columns updated_type, updated_subtype, and updated_subsubtype.\n",
+        "\n",
+        "b. Let each row of this DataFrame be a unique combination of type and subtype. Then, based on the hierarchy you proposed in Q3, fill in updated_type, updated_subtype, and updated_subsubtype accordingly. Remember to name the NA subtypes as “Unclassified”. Hint: your crosswalk should have 32 observations.\n",
+        "\n",
+        "c. Merge the crosswalk with the original data using type and subtype. How many rows are there for Accident- Unclassified? \n",
+        "\n",
+        "d. EXTRA CREDIT/OPTIONAL: After merging the crosswalk,can you check that the crosswalk and the new merged dataset have the same values in type and subtype?\n",
+        "\n",
+        "1. "
+      ],
+      "id": "3755c422"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "2. \n"
+      ],
+      "id": "ef1a1a94"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "3. \n"
+      ],
+      "id": "7ec000a5"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "4. \n"
+      ],
+      "id": "8f12f2df"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# App #1: Top Location by Alert Type Dashboard (30 points){-}\n",
+        "\n",
+        "1. \n",
+        "\n",
+        "a. "
+      ],
+      "id": "0076b186"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "b. "
+      ],
+      "id": "370f4a13"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "c. "
+      ],
+      "id": "3a264385"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "d. "
+      ],
+      "id": "133e1600"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "3. \n",
+        "    \n",
+        "a. \n"
+      ],
+      "id": "55911322"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "b. "
+      ],
+      "id": "7859f576"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "# MODIFY ACCORDINGLY\n",
+        "file_path = \"./top_alerts_map/chicago-boundaries.geojson\"\n",
+        "#----\n",
+        "\n",
+        "with open(file_path) as f:\n",
+        "    chicago_geojson = json.load(f)\n",
+        "\n",
+        "geo_data = alt.Data(values=chicago_geojson[\"features\"])"
+      ],
+      "id": "f46b49c0",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "4. \n"
+      ],
+      "id": "9e814f7e"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "5. \n",
+        "\n",
+        "a. \n"
+      ],
+      "id": "e6eaaf1c"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "b. "
+      ],
+      "id": "80a95be0"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "c. "
+      ],
+      "id": "9e464aff"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "d. "
+      ],
+      "id": "4f6ca1ca"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "e. \n",
+        "\n",
+        "# App #2: Top Location by Alert Type and Hour Dashboard (20 points) {-}\n",
+        "\n",
+        "1. \n",
+        "\n",
+        "a. \n",
+        "\n",
+        "\n",
+        "    \n",
+        "b. "
+      ],
+      "id": "1290ecb0"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "c.\n"
+      ],
+      "id": "fc2752f6"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "2.\n",
+        "\n",
+        "a. \n",
+        "\n",
+        "\n",
+        "\n",
+        "b. \n",
+        "\n",
+        "\n",
+        "c. \n",
+        "\n",
+        "\n",
+        "# App #3: Top Location by Alert Type and Hour Dashboard (20 points){-}\n",
+        "\n",
+        "1. \n",
+        "\n",
+        "\n",
+        "a. \n",
+        "\n",
+        "b. \n"
+      ],
+      "id": "c402a244"
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "2. \n",
+        "\n",
+        "a. \n",
+        "\n",
+        "\n",
+        "b. \n",
+        "    \n",
+        "3. \n",
+        "\n",
+        "a. \n",
+        "    \n",
+        "\n",
+        "b. \n",
+        "\n",
+        "\n",
+        "c. \n",
+        "\n",
+        "\n",
+        "d."
+      ],
+      "id": "09751eb2"
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "name": "python3",
+      "language": "python",
+      "display_name": "Python 3 (ipykernel)",
+      "path": "D:\\Anaconda\\anaconda\\share\\jupyter\\kernels\\python3"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}
